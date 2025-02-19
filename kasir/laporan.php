@@ -79,6 +79,19 @@
             font-size: 1.2em;
             font-weight: bold;
         }
+        button {
+            padding: 10px 15px;
+            background-color: #333;
+            margin-top: 10px;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="text"], input[type="date"], select {
+            width: 20%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
 
         /* Responsive */
         @media (max-width: 1024px) {
@@ -135,13 +148,30 @@
     <div class="container">
         <h2>Laporan Penjualan</h2>
         <label for="jenisLaporan">Pilih Jenis Laporan:</label>
-        <select id="jenisLaporan" onchange="ambilLaporan()">
+        <select id="jenisLaporan" onchange="tampilkanFilter()">
             <option value="harian">Harian</option>
             <option value="mingguan">Mingguan</option>
             <option value="bulanan">Bulanan</option>
             <option value="tahunan">Tahunan</option>
         </select>
+        <div id="filterTanggal">
+            <label>Pilih Tanggal:</label>
+            <input type="date" id="tanggal">
+        </div>
 
+        <div id="filterMingguan" style="display: none;">
+            <label>Tanggal:</label>
+            <input type="date" id="tanggalAwal">
+            <span>sampai</span>
+            <input type="date" id="tanggalAkhir">
+        </div>
+
+        <div id="filterBulanan" style="display: none;">
+            <label>Pilih Bulan:</label>
+            <input type="month" id="bulan">
+        </div>
+
+        <button onclick="ambilLaporan()">Tampilkan Laporan</button>
         <table id="laporanTable">
             <thead>
                 <tr>
@@ -161,40 +191,44 @@
     </div>
 
     <script>
-        function ambilLaporan() {
-            const jenis = document.getElementById("jenisLaporan").value;
-
-            // AJAX request
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", `get_laporan.php?jenis=${jenis}`, true);
-            xhr.onload = function() {
-                if (this.status === 200) {
-                    const data = JSON.parse(this.responseText);
-
-                    let output = '';
-                    let grandTotal = 0;
-
-                    data.forEach(item => {
-                        output += `
-                            <tr>
-                                <td>${item.tanggal}</td>
-                                <td>${item.nama_produk}</td>
-                                <td>Rp ${parseFloat(item.total).toLocaleString('id-ID')}</td>
-                            </tr>
-                        `;
-                        grandTotal += parseFloat(item.total);
-                    });
-
-                    document.querySelector("#laporanTable tbody").innerHTML = output;
-                    document.getElementById("grandTotal").textContent = `Rp ${grandTotal.toLocaleString('id-ID')}`;
-                }
-            }
-            xhr.send();
+        function tampilkanFilter() {
+            let jenisLaporan = document.getElementById("jenisLaporan").value;
+            document.getElementById("filterTanggal").style.display = (jenisLaporan === "harian") ? "block" : "none";
+            document.getElementById("filterMingguan").style.display = (jenisLaporan === "mingguan") ? "block" : "none";
+            document.getElementById("filterBulanan").style.display = (jenisLaporan === "bulanan") ? "block" : "none";
         }
 
-        // Muat laporan harian saat pertama kali dibuka
-        window.onload = function() {
-            ambilLaporan();
+        function ambilLaporan() {
+            let jenisLaporan = document.getElementById("jenisLaporan").value;
+            let tanggal = document.getElementById("tanggal").value;
+            let tanggalAwal = document.getElementById("tanggalAwal").value;
+            let tanggalAkhir = document.getElementById("tanggalAkhir").value;
+            let bulan = document.getElementById("bulan").value;
+
+            fetch("get_laporan.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jenisLaporan, tanggal, tanggalAwal, tanggalAkhir, bulan })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let tbody = document.getElementById("laporanBody");
+                let grandTotal = 0;
+                tbody.innerHTML = "";
+
+                data.forEach(item => {
+                    grandTotal += parseInt(item.total);
+                    tbody.innerHTML += `<tr>
+                        <td>${item.tanggal}</td>
+                        <td>${item.nama_barang}</td>
+                        <td>${item.qty}</td>
+                        <td>Rp ${parseInt(item.total).toLocaleString()}</td>
+                    </tr>`;
+                });
+
+                document.getElementById("grandTotal").innerText = `Rp ${grandTotal.toLocaleString()}`;
+            })
+            .catch(error => console.error("Error:", error));
         }
     </script>
 </body>
